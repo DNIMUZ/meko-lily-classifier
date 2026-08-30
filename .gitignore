@@ -7,3 +7,4 @@ data/cats/meko/*
 data/cats/lily/*
 !data/cats/meko/.gitkeep
 !data/cats/lily/.gitkeep
+inbox/
