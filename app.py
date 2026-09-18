@@ -16,9 +16,7 @@ CLASS_NAMES_PATH = PROJECT_DIR / "models" / "class_names.json"
 MODEL_PATH = PROJECT_DIR / "models" / "meko_lily.keras"
 
 UPGRADED = {"meko": "Meko", "lily": "Lily", "other": "A visitor"}
-FIRM_BOX = 0.75
 FIRM_PHOTO = 0.70
-
 st.set_page_config(page_title="Meko or Lily?", page_icon="🐱", layout="centered")
 
 CSS = """
@@ -196,56 +194,31 @@ def plate(kind: str, main: str, conf: float | None = None, note: str = "", rows=
     )
 
 
-def probs_of(model, bgr) -> np.ndarray:
-    rgb = np.ascontiguousarray(bgr[:, :, ::-1])
-    image = Image.fromarray(rgb).resize(IMAGE_SIZE)
-    pixels = np.asarray(image, dtype=np.uint8)[None, ...]
-    return 0.5 * (
-        model.predict(pixels, verbose=0)[0] + model.predict(np.flip(pixels, axis=2), verbose=0)[0]
-    )
-
-
 def resolve_verdict(model, class_names, frame_bgr, results):
     names = [UPGRADED.get(name, name.title()) for name in class_names]
-    if results:
-        known = [r for r in results if r["label"] != "other cat"]
-        if known:
-            chosen = max(known, key=lambda r: r["confidence"])
-            x1, y1, x2, y2 = chosen["box"]
-            crop = frame_bgr[y1:y2, x1:x2]
-            probs = probs_of(model, crop) if crop.size else None
-            rows = [(names[i], float(probs[i])) for i in range(len(class_names))] if probs is not None else None
-            if len(results) > 1:
-                others = ", ".join(f"{r['label']} {r['confidence']:.0%}" for r in results if r != chosen)
-                note = f"Two cats on the page ({others}) &mdash; this stamp picks the closest match."
-            else:
-                note = "Read from a box drawn around the cat."
-            kind = "name" if chosen["confidence"] >= FIRM_BOX else "doubt"
-            return {"kind": kind, "main": chosen["label"], "alt": None,
-                    "conf": chosen["confidence"], "note": note, "rows": rows}
-        strangers = ", ".join(f"{r['label']} {r['confidence']:.0%}" for r in results)
-        note = f"The boxed cat{'' if len(results) == 1 else 's'} ({strangers}) "
-        note += "has no page in the book &mdash; looks like a visitor."
-        return {"kind": "denied", "main": "Not registered", "alt": None, "conf": None,
-                "note": note, "rows": None}
-    probs = probs_of(model, frame_bgr)
+    rgb = np.ascontiguousarray(frame_bgr[:, :, ::-1])
+    pixels = np.asarray(Image.fromarray(rgb).resize(IMAGE_SIZE), dtype=np.uint8)[None, ...]
+    probs = model.predict(pixels, verbose=0)[0]
     order = sorted(range(len(class_names)), key=lambda i: probs[i], reverse=True)
     best = order[0]
     name = UPGRADED.get(class_names[best], class_names[best].title())
     conf = float(probs[best])
     rows = [(names[i], float(probs[i])) for i in range(len(class_names))]
+    read = "The verdict is read from the whole photo."
+    if results:
+        read = "The verdict is read from the whole photo; the box is drawn for the record."
     if class_names[best] == "other":
         return {"kind": "denied", "main": "Not registered", "alt": None, "conf": None,
-                "note": "The cat stayed out of focus &mdash; the book still refuses to name it.", "rows": rows}
+                "note": read + " The cat stayed out of focus &mdash; the book still refuses to name it.", "rows": rows}
     if conf >= FIRM_PHOTO:
         return {"kind": "name", "main": name, "alt": None, "conf": conf,
-                "note": "Read from the whole photo; no cat filled a box, so take it as a light note.", "rows": rows}
+                "note": read, "rows": rows}
     if probs[order[0]] - probs[order[1]] >= 0.08:
         return {"kind": "doubt", "main": name, "alt": None, "conf": conf,
-                "note": "Seen from across the room &mdash; the stamp won&rsquo;t seat. Try a closer, brighter photo.", "rows": rows}
+                "note": read + " Seen from across the room &mdash; the stamp won&rsquo;t seat. Try a closer, brighter photo.", "rows": rows}
     second = UPGRADED.get(class_names[order[1]], class_names[order[1]].title())
     return {"kind": "seam", "main": name, "alt": second, "conf": None,
-            "note": "The page split between two cats &mdash; it&rsquo;s one or the other.", "rows": rows}
+            "note": read + " The page split between two cats &mdash; it&rsquo;s one or the other.", "rows": rows}
 
 
 @st.cache_resource
