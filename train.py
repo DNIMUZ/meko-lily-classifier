@@ -13,6 +13,22 @@ CLASS_NAMES_PATH = MODEL_DIR / "class_names.json"
 IMAGE_SIZE = (224, 224)
 BATCH_SIZE = 16
 SEED = 42
+EPOCHS = 20
+IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+
+
+def count_images(class_dir: Path) -> int:
+    return sum(1 for p in class_dir.rglob("*") if p.suffix.lower() in IMAGE_EXTS)
+
+
+def class_weights(class_names: list[str]) -> dict[int, float]:
+    counts = [count_images(DATA_DIR / name) for name in class_names]
+    total = sum(counts)
+    n = len(counts)
+    return {
+        index: total / (n * count) if count else 0.0
+        for index, count in enumerate(counts)
+    }
 
 
 def build_model(class_count: int) -> keras.Model:
@@ -69,8 +85,12 @@ def main() -> None:
     )
 
     class_names = train_ds.class_names
-    if len(class_names) != 2:
-        raise ValueError(f"Expected exactly two folders, found: {class_names}")
+    if len(class_names) < 2:
+        raise ValueError(f"Need at least two class folders, found: {class_names}")
+    print(f"Classes: {class_names}")
+    print(f"Per-class image counts: {[count_images(DATA_DIR / n) for n in class_names]}")
+    weights = class_weights(class_names)
+    print(f"Balanced class weights: {weights}")
 
     autotune = tf.data.AUTOTUNE
     train_ds = train_ds.prefetch(autotune)
@@ -80,7 +100,13 @@ def main() -> None:
         keras.callbacks.EarlyStopping(patience=4, restore_best_weights=True),
         keras.callbacks.ModelCheckpoint(MODEL_PATH, save_best_only=True),
     ]
-    model.fit(train_ds, validation_data=validation_ds, epochs=15, callbacks=callbacks)
+    model.fit(
+        train_ds,
+        validation_data=validation_ds,
+        epochs=EPOCHS,
+        callbacks=callbacks,
+        class_weight=weights,
+    )
     model.save(MODEL_PATH)
     CLASS_NAMES_PATH.write_text(json.dumps(class_names, indent=2), encoding="utf-8")
     print(f"Saved model to {MODEL_PATH}")

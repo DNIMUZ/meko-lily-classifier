@@ -4,8 +4,8 @@
 
 **Owner:** Muhamad Dinie Bin Muzaffar  
 **Project type:** Personal computer-vision and machine-learning project  
-**Status:** Requirements and design phase  
-**Last updated:** 2026-08-22
+**Status:** Phase 4 in progress — three-class model (Meko / Lily / Other) with held-out evaluation  
+**Last updated:** 2026-09-18
 
 ## 1. Executive Summary
 
@@ -78,15 +78,19 @@ The system must not silently claim that every image is one of the two cats. Imag
 
 ## 7. Data Plan
 
-Photos will be stored in this structure:
+Photos are stored in this structure:
 
 ```text
 data/cats/
-├── lily/
-└── meko/
+├── lily/    # Lily only
+├── meko/    # Meko only
+└── other/   # any other cat (not Meko or Lily)
 ```
 
-The initial target is at least 30-50 varied photos per cat. The collection should include:
+The `other` class lets the model reject random cats instead of forcing every
+image into a Meko-or-Lily decision. The initial target is at least 30-50 varied
+photos per cat for the personal classes, plus a larger, varied set for `other`.
+The collection should include:
 
 - different poses and body orientations;
 - close-up and full-body views;
@@ -95,7 +99,12 @@ The initial target is at least 30-50 varied photos per cat. The collection shoul
 - photos with and without collars or accessories; and
 - images from different days.
 
-Near-duplicate photos should not be split between training and validation data because that can create an unrealistically high score.
+Near-duplicate photos should not be split between training and validation data
+because that can create an unrealistically high score.
+
+Photos committed publicly are processed (downscaled to 448 px, EXIF/GPS
+stripped, JPEG). Raw originals stay local under `data/originals/` and are
+ignored by Git.
 
 ## 8. Technical Design
 
@@ -106,7 +115,7 @@ flowchart LR
     A[Cat photos] --> B[Label folders]
     B --> C[Train validation split]
     C --> D[MobileNetV2 feature extractor]
-    D --> E[Two-class prediction head]
+    D --> E[Class prediction head]
     E --> F[Saved Keras model]
     G[Uploaded image] --> H[Resize and preprocess]
     H --> F
@@ -134,12 +143,14 @@ flowchart LR
 
 ## 9. Evaluation Plan
 
-Accuracy alone is not sufficient. The test set should contain new photos from different days and conditions. The evaluation report should include:
+Accuracy alone is not sufficient. The test set should contain new photos from different days and conditions. `evaluate.py` trains a fresh model on a fixed-seed stratified split (default 80/10/10) and writes `models/evaluation_report.md`. The evaluation report includes:
 
 - accuracy;
 - precision and recall for Meko;
 - precision and recall for Lily;
-- confusion matrix; and
+- precision and recall for Other;
+- confusion matrix;
+- confidence-threshold behaviour; and
 - examples of incorrect or uncertain predictions.
 
 A first practical target is at least 90% accuracy on a held-out test set of realistic new photos, while documenting the size and composition of that test set. This target is a guide, not a claim until measured.
