@@ -1,6 +1,9 @@
 # Meko or Lily Cat Classifier
 
-A small image-classification project that learns to distinguish two cats, Meko and Lily, from other cats. It trains a pretrained MobileNetV2 model and provides a Streamlit app for photo uploads. The same app includes a camera input for a later webcam test.
+A small image-classification project that learns to distinguish two cats, Meko and Lily, from other cats. It trains a pretrained MobileNetV2 model and provides:
+
+- A **Streamlit** app (`app.py`) for photo uploads and snapshot camera, with a cat detector that boxes and labels Meko, Lily, or other cat.
+- A **live webcam** mode inside the same Streamlit app (WebRTC) that streams frames and updates the boxes in real time.
 
 Read the [project report](PROJECT_REPORT.md) for the requirements, technical design, evaluation plan, risks, and delivery phases.
 
@@ -36,7 +39,11 @@ The first training run downloads MobileNetV2 weights from TensorFlow. The traine
 streamlit run app.py
 ```
 
-Open the local URL shown by Streamlit. Upload a photo now. When a camera is available, choose `Camera` and allow browser camera access.
+Open the local URL shown by Streamlit. Upload a photo now. When a camera is available, choose `Snapshot camera` and allow browser camera access.
+
+### Live video (WebRTC)
+
+The Streamlit app has a **Live video** source built on `streamlit-webrtc`. Select it, press **Start**, approve camera access, and the feed streams directly to the app. Frames are processed on the server CPU, so expect a few frames per second. Detected cats get a box labelled **Meko** or **Lily**; uncertain frames or non-Meko/Lily cats are shown as **other cat**.
 
 ## 4. Push to GitHub
 
@@ -74,5 +81,5 @@ Never add private employer or production data to this repository. Cat photos are
 
 1. ✅ Hold out photos taken on different days for a more honest test set (see `evaluate.py`).
 2. ✅ Add a third `other` class for random cats so the model can say "neither Meko nor Lily" (`data/cats/other`).
-3. Add live webcam frames after the upload workflow is reliable.
-4. Track precision, recall, and a confusion matrix (now reported by `evaluate.py`).
+3. ✅ Live webcam mode with cat detection and Meko/Lily/other boxes (`Live video` in `app.py`, WebRTC).
+4. ✅ Track precision, recall, and a confusion matrix (now reported by `evaluate.py`).
