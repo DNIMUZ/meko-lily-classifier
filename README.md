@@ -1,6 +1,6 @@
 # Meko or Lily Cat Classifier
 
-A small image-classification project that learns to distinguish two cats, Meko and Lily. It trains a pretrained MobileNetV2 model and provides a Streamlit app for photo uploads. The same app includes a camera input for a later webcam test.
+A small image-classification project that learns to distinguish two cats, Meko and Lily, from other cats. It trains a pretrained MobileNetV2 model and provides a Streamlit app for photo uploads. The same app includes a camera input for a later webcam test.
 
 Read the [project report](PROJECT_REPORT.md) for the requirements, technical design, evaluation plan, risks, and delivery phases.
 
@@ -11,10 +11,11 @@ Use several different photos for each cat. Include different poses, lighting, di
 ```text
 data/cats/
 ├── lily/    # Lily photos only
-└── meko/    # Meko photos only
+├── meko/    # Meko photos only
+└── other/   # any other cat (not Meko or Lily)
 ```
 
-Start with at least 30-50 photos per cat. More variety is more valuable than many almost-identical photos.
+Start with at least 30-50 photos per cat. More variety is more valuable than many almost-identical photos. The committed images are processed (downscaled, EXIF stripped); raw photos are kept locally under `data/originals/` and are not committed.
 
 ## 2. Install and train
 
@@ -71,7 +72,7 @@ Never add private employer or production data to this repository. Cat photos are
 
 ## Next improvements
 
-1. Hold out photos taken on different days for a more honest test set.
-2. Add a third `unknown` decision when both probabilities are low or too close.
+1. ✅ Hold out photos taken on different days for a more honest test set (see `evaluate.py`).
+2. ✅ Add a third `other` class for random cats so the model can say "neither Meko nor Lily" (`data/cats/other`).
 3. Add live webcam frames after the upload workflow is reliable.
-4. Track precision, recall, and a confusion matrix instead of relying only on confidence.
+4. Track precision, recall, and a confusion matrix (now reported by `evaluate.py`).

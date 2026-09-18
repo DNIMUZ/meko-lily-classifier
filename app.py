@@ -40,8 +40,12 @@ if photo is not None:
     pixels = preprocess_input(np.asarray(resized, dtype=np.float32)[None, ...])
     probabilities = model.predict(pixels, verbose=0)[0]
     best_index = int(np.argmax(probabilities))
+    best_name = class_names[best_index]
     confidence = float(probabilities[best_index])
-    st.subheader(f"This looks like {class_names[best_index].title()}")
+    if best_name == "other":
+        st.subheader("Neither Meko nor Lily — looks like another cat.")
+    else:
+        st.subheader(f"This looks like {best_name.title()}")
     st.metric("Confidence", f"{confidence:.1%}")
     st.bar_chart({name.title(): float(probabilities[index]) for index, name in enumerate(class_names)})
     if confidence < 0.70:
