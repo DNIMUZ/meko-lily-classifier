@@ -70,6 +70,8 @@ def classify_crop(model, crop_bgr, class_names):
     image = Image.fromarray(rgb).resize(IMAGE_SIZE)
     pixels = np.asarray(image, dtype=np.uint8)[None, ...]
     probabilities = model.predict(pixels, verbose=0)[0]
+    flipped = model.predict(np.flip(pixels, axis=2), verbose=0)[0]
+    probabilities = 0.5 * (probabilities + flipped)
     best_index = int(np.argmax(probabilities))
     confidence = float(probabilities[best_index])
     label = "other cat"

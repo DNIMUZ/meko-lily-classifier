@@ -1,8 +1,10 @@
 """Honest held-out evaluation for the Meko/Lily/Other classifier.
 
 Fixes a fixed-seed, stratified train/val/test split (80/10/10), trains a fresh
-MobileNetV2 model on the training portion, then reports accuracy, per-class
-precision/recall/F1, a confusion matrix, confidence-threshold behaviour, and
+MobileNetV2 model (head, then top-layer fine-tune) on the training portion, and
+reports accuracy, per-class precision/recall/F1, a confusion matrix, the
+false-Meko rate (the app's key failure mode: non-Meko cats shown as Meko), a
+per-class decision-threshold sweep using the app's exact labelling rule, and
 misclassified examples. Writes ``models/evaluation_report.md``.
 
 Run:  python evaluate.py
@@ -15,10 +17,9 @@ from pathlib import Path
 
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
 
 from train import IMAGE_SIZE, MODEL_DIR, MODEL_PATH, CLASS_NAMES_PATH
-from train import build_model, class_weights, count_images
+from train import build_model, class_weights, count_images, fit_two_stage
 
 PROJECT_DIR = Path(__file__).parent
 DATA_DIR = PROJECT_DIR / "data" / "cats"
@@ -26,14 +27,15 @@ REPORT_PATH = MODEL_DIR / "evaluation_report.md"
 
 BATCH_SIZE = 16
 SEED = 123
-EPOCHS = 25
+EPOCHS = 20
 TRAIN_SPLIT = 0.8
 DATA_FILE_EXTS = {".jpg", ".jpeg", ".png"}
+RECALL_FLOOR = 0.9
 
 random.seed(SEED)
 
 
-def collect_image_paths() -> tuple[list[str], list[int]]:
+def collect_image_paths() -> tuple[list[str], list[int], list[str]]:
     """Return (paths, labels) grouped per class folder."""
     paths: list[str] = []
     labels: list[int] = []
@@ -72,7 +74,7 @@ def stratified_split(
 
 
 def make_dataset(
-    paths: list[str], labels: list[int], indices: list[int]
+    paths: list[str], labels: list[int], indices: list[int], flip: bool = False
 ) -> tf.data.Dataset:
     sample_paths = [paths[i] for i in indices]
     sample_labels = [labels[i] for i in indices]
@@ -81,12 +83,26 @@ def make_dataset(
         image = tf.io.read_file(path)
         image = tf.image.decode_jpeg(image, channels=3)
         image = tf.image.resize(image, IMAGE_SIZE)
+        if flip:
+            image = tf.image.flip_left_right(image)
         return image, label
 
     ds = tf.data.Dataset.from_tensor_slices((sample_paths, sample_labels))
     ds = ds.map(decode, num_parallel_calls=tf.data.AUTOTUNE)
     ds = ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
     return ds
+
+
+def app_labels(probabilities: np.ndarray, cutoff: float, class_names: list[str]) -> np.ndarray:
+    """Labels using the app rule: named cat only when its class wins AND its
+    probability is at least ``cutoff``; otherwise 'other'."""
+    best_index = probabilities.argmax(axis=1)
+    best_prob = probabilities.max(axis=1)
+    other_index = len(class_names) - 1
+    labels = np.where(
+        (best_index != other_index) & (best_prob >= cutoff), best_index, other_index
+    )
+    return labels
 
 
 def report_metrics(y_true: np.ndarray, y_pred: np.ndarray, class_names: list[str]) -> str:
@@ -133,19 +149,40 @@ def report_metrics(y_true: np.ndarray, y_pred: np.ndarray, class_names: list[str
 
 def threshold_table(
     probabilities: np.ndarray, y_true: np.ndarray, class_names: list[str]
-) -> str:
-    best = probabilities.max(axis=1)
-    predicted = probabilities.argmax(axis=1)
-    lines = ["### Confidence-threshold behaviour (reject when max probability < threshold)"]
-    lines.append("| threshold | kept | rejected | accuracy (kept) |")
-    lines.append("|---|---|---|---|")
-    for threshold in (0.5, 0.6, 0.7, 0.8, 0.9):
-        kept = best >= threshold
-        n_kept = int(kept.sum())
-        n_rejected = int((~kept).sum())
-        acc = float((predicted[kept] == y_true[kept]).mean()) if n_kept else 0.0
-        lines.append(f"| {threshold:.1f} | {n_kept} | {n_rejected} | {acc:.3f} |")
-    return "\n".join(lines)
+) -> tuple[list[str], float]:
+    """Sweep the app-rule cutoff; recommend the lowest cutoff that keeps Meko and
+    Lily recall at/above ``RECALL_FLOOR`` while minimising false Meko labels."""
+    meko = class_names.index("meko")
+    lily = class_names.index("lily")
+    other = len(class_names) - 1
+
+    lines = [
+        "### Decision-threshold sweep (app rule: named label only when the winner's probability >= cutoff, else 'other')"
+    ]
+    lines.append("| cutoff | lily rec | meko rec | other rec | false-Meko rate | overall acc |")
+    lines.append("|---|---|---|---|---|---|")
+
+    rows: list[tuple[float, float, float, float, float, float]] = []
+    for cutoff in np.arange(0.50, 0.96, 0.05):
+        cutoff = round(float(cutoff), 2)
+        labels = app_labels(probabilities, cutoff, class_names)
+        rows.append((cutoff, labels, y_true))
+        lily_rec = float((labels[y_true == lily] == lily).mean())
+        meko_rec = float((labels[y_true == meko] == meko).mean())
+        other_rec = float((labels[y_true == other] == other).mean())
+        false_meko = float((labels[y_true == other] == meko).mean())
+        acc = float((labels == y_true).mean())
+        lines.append(
+            f"| {cutoff:.2f} | {lily_rec:.3f} | {meko_rec:.3f} | {other_rec:.3f} | {false_meko:.3f} | {acc:.3f} |"
+        )
+
+    chosen = next(
+        (round(float(c), 2) for c, labels, y in rows
+         if (labels[y_true == lily] == lily).mean() >= RECALL_FLOOR
+         and (labels[y_true == meko] == meko).mean() >= RECALL_FLOOR),
+        round(float(np.arange(0.50, 0.96, 0.05)[0]), 2),
+    )
+    return lines, chosen
 
 
 def main() -> None:
@@ -158,34 +195,29 @@ def main() -> None:
     train_ds = make_dataset(paths, labels, train_idx)
     val_ds = make_dataset(paths, labels, val_idx)
     test_ds = make_dataset(paths, labels, test_idx)
+    test_flip_ds = make_dataset(paths, labels, test_idx, flip=True)
     print(f"Split sizes: train={len(train_idx)} val={len(val_idx)} test={len(test_idx)}")
 
     weights = class_weights(class_names)
     model = build_model(len(class_names))
-    callbacks = [
-        keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True),
-        keras.callbacks.ModelCheckpoint(MODEL_PATH, save_best_only=True),
-    ]
-    history = model.fit(
-        train_ds,
-        validation_data=val_ds,
-        epochs=EPOCHS,
-        callbacks=callbacks,
-        class_weight=weights,
-        verbose=1,
-    )
+    fit_two_stage(model, train_ds, val_ds, weights, MODEL_PATH)
     model.save(MODEL_PATH)
     CLASS_NAMES_PATH.write_text(json.dumps(class_names, indent=2), encoding="utf-8")
 
     probabilities = model.predict(test_ds, verbose=0)
-    y_pred = probabilities.argmax(axis=1)
+    flipped = model.predict(test_flip_ds, verbose=0)
+    probabilities = 0.5 * (np.asarray(probabilities) + np.asarray(flipped))
     y_true = np.array([labels[i] for i in test_idx])
+
+    sweep_lines, chosen_cutoff = threshold_table(probabilities, y_true, class_names)
+    y_pred = app_labels(probabilities, chosen_cutoff, class_names)
 
     metrics_lines, matrix, accuracy = report_metrics(y_true, y_pred, class_names)
     print()
     print(metrics_lines)
     print()
-    print(threshold_table(probabilities, y_true, class_names))
+    print("\n".join(sweep_lines))
+    print(f"\nRecommended cutoff: {chosen_cutoff:.2f}")
 
     mistakes = []
     for i, index in enumerate(test_idx):
@@ -193,9 +225,9 @@ def main() -> None:
         predicted_label = y_pred[i]
         if true_label != predicted_label:
             mistakes.append((paths[index], true_label, predicted_label, probabilities[i]))
-    example_lines = ["### Misclassified examples (first 5)"]
+    example_lines = ["### Misclassified examples (first 8)"]
     if mistakes:
-        for path, true_label, predicted_label, probs in mistakes[:5]:
+        for path, true_label, predicted_label, probs in mistakes[:8]:
             probs_str = ", ".join(
                 f"{class_names[j]}={probs[j]:.2f}" for j in range(len(class_names))
             )
@@ -214,12 +246,14 @@ def main() -> None:
             f"- Classes: {class_names}",
             f"- Per-class image counts: {counts}",
             f"- Split: train={len(train_idx)} val={len(val_idx)} test={len(test_idx)} (seed {SEED})",
-            f"- Model: MobileNetV2 transfer learning, {EPOCHS}-epoch cap with early stopping",
-            f"- Balanced class weights applied during training",
+            f"- Model: MobileNetV2 transfer learning (head, then top {60} layers fine-tuned at LR 1e-5), {EPOCHS}-epoch cap with early stopping",
+            f"- Probabilities averaged with a horizontal-flip TTA (matches the app).",
+            f"- Decision rule: named cat only when it wins AND its probability >= cutoff `{chosen_cutoff:.2f}`, else 'other'.",
+            f"- False-Meko rate = share of true-`other` cats labelled Meko at the chosen cutoff.",
             "",
             metrics_lines,
             "",
-            threshold_table(probabilities, y_true, class_names),
+            "\n".join(sweep_lines),
             "",
             example_lines,
         ]

@@ -4,4 +4,7 @@ __pycache__/
 *.tmp
 models/*.h5
 data/originals/
+data/cats/
+data/new_*/
+data/.other_new/
 inbox/

@@ -7,9 +7,12 @@ A small image-classification project that learns to distinguish two cats, Meko a
 
 Read the [project report](PROJECT_REPORT.md) for the requirements, technical design, evaluation plan, risks, and delivery phases.
 
-## 1. Prepare photos
+## 1. Prepare photos (kept private)
 
-Use several different photos for each cat. Include different poses, lighting, distances, and backgrounds. Avoid putting the same photo, or near-duplicates, in both folders.
+Training photos live only in your **local, gitignored** `data/cats/` folder — they are
+never committed. Use several different photos for each cat: different poses,
+lighting, distances, and backgrounds. Avoid putting the same photo, or
+near-duplicates, in both folders.
 
 ```text
 data/cats/
@@ -18,7 +21,20 @@ data/cats/
 └── other/   # any other cat (not Meko or Lily)
 ```
 
-Start with at least 30-50 photos per cat. More variety is more valuable than many almost-identical photos. The committed images are processed (downscaled, EXIF stripped); raw photos are kept locally under `data/originals/` and are not committed.
+Start with at least 30-50 photos per cat. More variety is more valuable than many
+almost-identical photos. Everything in `data/cats/` is processed (downscaled to 448 px,
+EXIF/GPS stripped, JPEG) and kept out of Git; raw photos stay under `data/originals/`.
+
+To know which cat is which, see the two sample images committed here:
+`samples/meko.jpg` and `samples/lily.jpg`.
+
+Extra "other cat" photos dropped as folders under `data/cats/other/` (for example the
+breed downloads listed in [Dataset credits](#dataset-credits-and-privacy)) can be
+flattened into the training set with:
+
+```powershell
+python ingest_other_breeds.py
+```
 
 ## 2. Install and train
 
@@ -31,7 +47,11 @@ python -m pip install -r requirements.txt
 python train.py
 ```
 
-The first training run downloads MobileNetV2 weights from TensorFlow. The trained model is saved locally under `models/` and is ignored by Git.
+The first training run downloads MobileNetV2 weights from TensorFlow. Run
+`python evaluate.py` for the standard held-out evaluation (per-class metrics,
+false-Meko rate, threshold sweep) which writes `models/evaluation_report.md`.
+The trained model is saved under `models/` (only the committed `.keras` file is
+kept in Git).
 
 ## 3. Run the app
 
@@ -59,13 +79,45 @@ git remote add origin https://github.com/<your-username>/meko-lily-classifier.gi
 git push -u origin main
 ```
 
-Replace `<your-username>` with your GitHub username. The project `.gitignore` excludes virtual environments, model files, and photos by default, but still review `git status` carefully before pushing. Never commit passwords, tokens, or private photos accidentally.
+Replace `<your-username>` with your GitHub username. The project `.gitignore`
+excludes virtual environments, `data/cats/`, and `data/originals/`, but always
+review `git status` carefully before pushing. Before adding any image, run the
+metadata guard:
+
+```powershell
+python check_image_metadata.py samples
+```
+
+Never commit passwords, tokens, or private photos accidentally.
 
 ## Important limitations
 
 This is a learning project, not proof of identity. If the confidence is low, treat the result as unknown. A model may learn background, collar, or lighting instead of the cat's face, so test with new photos from different places.
 
 Never add private employer or production data to this repository. Cat photos are personal data too, so keep the project private unless you are comfortable publishing them.
+
+## Dataset credits and privacy
+
+The cats Meko and Lily are the owner's own pets. Their photos are **private** and
+are **not** published in this repository (only the two sample images in
+`samples/` are included so readers know which cat is which). All training data in
+`data/cats/` is gitignored.
+
+The `other` class — random cats that are neither Meko nor Lily — was built from
+publicly available photos, credited below. To reproduce or extend the `other`
+class, download from these sources, drop the images (as folders or files) into
+`data/cats/other/`, and run `python ingest_other_breeds.py`.
+
+- **Phoenix Animal Rescue cats** — bulk of the `other` class:
+  https://data.mendeley.com/datasets/ng6tv57j5c/1
+- **Sample cat images for model testing** (city-labelled cat photos):
+  https://www.kaggle.com/datasets/jackmustonen/sample-cat-images-for-model-testing
+- **Cat breeds** — breed photos (for example Bengal, Persian, Tabby, Local,
+  Mixed Breed) used as *look-alike* hard negatives that resemble Meko/Lily but
+  are neither: https://www.kaggle.com/datasets/nikolasgegenava/cat-breeds
+
+Per-image attribution remains with the original sources; this project only uses
+a small processed subset locally.
 
 ## Useful references
 
@@ -83,3 +135,5 @@ Never add private employer or production data to this repository. Cat photos are
 2. ✅ Add a third `other` class for random cats so the model can say "neither Meko nor Lily" (`data/cats/other`).
 3. ✅ Live webcam mode with cat detection and Meko/Lily/other boxes (`Live video` in `app.py`, WebRTC).
 4. ✅ Track precision, recall, and a confusion matrix (now reported by `evaluate.py`).
+5. ✅ Two-stage fine-tune (unfrozen MobileNetV2 top layers) + look-alike hard negatives in `other` to kill false-Meko labels; false-Meko rate now reported by `evaluate.py`.
+6. ✅ Privacy hardening: `data/cats/` no longer committed; `check_image_metadata.py` guards EXIF/GPS leaks.

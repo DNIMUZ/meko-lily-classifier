@@ -14,6 +14,8 @@ IMAGE_SIZE = (224, 224)
 BATCH_SIZE = 16
 SEED = 42
 EPOCHS = 20
+FINETUNE_LAYERS = 60
+FINETUNE_LR = 1e-5
 IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 
 
@@ -31,12 +33,14 @@ def class_weights(class_names: list[str]) -> dict[int, float]:
     }
 
 
-def build_model(class_count: int) -> keras.Model:
+def build_model(class_count: int, trainable_base: bool = False) -> keras.Model:
     augmentation = keras.Sequential(
         [
             layers.RandomFlip("horizontal"),
             layers.RandomRotation(0.08),
             layers.RandomZoom(0.1),
+            layers.RandomBrightness(0.1),
+            layers.RandomContrast(0.1),
         ],
         name="augmentation",
     )
@@ -45,14 +49,14 @@ def build_model(class_count: int) -> keras.Model:
         include_top=False,
         weights="imagenet",
     )
-    base_model.trainable = False
+    base_model.trainable = trainable_base
 
     inputs = keras.Input(shape=(*IMAGE_SIZE, 3))
     x = augmentation(inputs)
     x = keras.applications.mobilenet_v2.preprocess_input(x)
-    x = base_model(x, training=False)
+    x = base_model(x)
     x = layers.GlobalAveragePooling2D()(x)
-    x = layers.Dropout(0.2)(x)
+    x = layers.Dropout(0.3)(x)
     outputs = layers.Dense(class_count, activation="softmax")(x)
     model = keras.Model(inputs, outputs)
     model.compile(
@@ -61,6 +65,46 @@ def build_model(class_count: int) -> keras.Model:
         metrics=["accuracy"],
     )
     return model
+
+
+def find_base_layer(model: keras.Model) -> keras.Model:
+    for layer in model.layers:
+        if isinstance(layer, keras.Model) and "mobilenetv2" in layer.name:
+            return layer
+    raise RuntimeError("MobileNetV2 base layer not found in model")
+
+
+def enable_base_finetuning(model: keras.Model) -> None:
+    base = find_base_layer(model)
+    for layer in base.layers[-FINETUNE_LAYERS:]:
+        layer.trainable = True
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=FINETUNE_LR),
+        loss="sparse_categorical_crossentropy",
+        metrics=["accuracy"],
+    )
+
+
+def fit_two_stage(model, train_ds, validation_ds, weights, checkpoint_path) -> None:
+    callbacks = [
+        keras.callbacks.EarlyStopping(patience=4, restore_best_weights=True),
+        keras.callbacks.ModelCheckpoint(checkpoint_path, save_best_only=True),
+    ]
+    model.fit(
+        train_ds,
+        validation_data=validation_ds,
+        epochs=EPOCHS,
+        callbacks=callbacks,
+        class_weight=weights,
+    )
+    enable_base_finetuning(model)
+    model.fit(
+        train_ds,
+        validation_data=validation_ds,
+        epochs=EPOCHS,
+        callbacks=callbacks,
+        class_weight=weights,
+    )
 
 
 def main() -> None:
@@ -96,17 +140,7 @@ def main() -> None:
     train_ds = train_ds.prefetch(autotune)
     validation_ds = validation_ds.prefetch(autotune)
     model = build_model(len(class_names))
-    callbacks = [
-        keras.callbacks.EarlyStopping(patience=4, restore_best_weights=True),
-        keras.callbacks.ModelCheckpoint(MODEL_PATH, save_best_only=True),
-    ]
-    model.fit(
-        train_ds,
-        validation_data=validation_ds,
-        epochs=EPOCHS,
-        callbacks=callbacks,
-        class_weight=weights,
-    )
+    fit_two_stage(model, train_ds, validation_ds, weights, MODEL_PATH)
     model.save(MODEL_PATH)
     CLASS_NAMES_PATH.write_text(json.dumps(class_names, indent=2), encoding="utf-8")
     print(f"Saved model to {MODEL_PATH}")
