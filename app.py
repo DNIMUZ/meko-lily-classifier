@@ -3,9 +3,8 @@ import json
 
 import numpy as np
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageOps
 from tensorflow import keras
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 PROJECT_DIR = Path(__file__).parent
 MODEL_PATH = PROJECT_DIR / "models" / "meko_lily.keras"
@@ -35,9 +34,10 @@ if source == "Camera":
 
 if photo is not None:
     image = Image.open(photo).convert("RGB")
+    image = ImageOps.exif_transpose(image)
     st.image(image, caption="Input photo", use_container_width=True)
     resized = image.resize(IMAGE_SIZE)
-    pixels = preprocess_input(np.asarray(resized, dtype=np.float32)[None, ...])
+    pixels = np.asarray(resized, dtype=np.uint8)[None, ...]
     probabilities = model.predict(pixels, verbose=0)[0]
     best_index = int(np.argmax(probabilities))
     best_name = class_names[best_index]
