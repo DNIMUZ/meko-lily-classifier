@@ -43,10 +43,10 @@ p,li,span,div{color:inherit;}
 .book-sub{margin:.15rem 0 .9rem;font-size:1.02rem;color:var(--ink-soft);}
 .binding{border-top:2px solid var(--ink);border-bottom:1px solid var(--ink);height:4px;margin-bottom:1.1rem;position:relative;}
 .binding::after{content:"";position:absolute;left:50%;top:-3px;transform:translateX(-50%);width:9px;height:9px;background:var(--paper);border:1px solid var(--ink);transform-origin:50% 40%;rotate:45deg;}
-[data-testid="column"]{background:var(--paper-2);border:1px solid rgba(30,42,36,.12);padding:1.05rem 1.2rem 1.2rem;border-radius:2px;}
-[data-testid="stHorizontalBlock"]{position:relative;gap:1.1rem;}
-[data-testid="stHorizontalBlock"]::after{content:"";position:absolute;left:50%;top:1rem;bottom:1rem;width:2px;background:repeating-linear-gradient(var(--gold-soft) 0 4px,transparent 4px 9px);opacity:.35;}
-@media (max-width:720px){[data-testid="stHorizontalBlock"]{flex-direction:column;}[data-testid="stHorizontalBlock"]::after{display:none;}}
+[data-testid="column"]{background:var(--paper-2);border:1px solid rgba(30,42,36,.12);padding:1.05rem 1.2rem 1.2rem;border-radius:2px;position:relative;}
+[data-testid="stHorizontalBlock"]{gap:1.1rem;}
+[data-testid="stHorizontalBlock"] [data-testid="column"]:first-child::after{content:"";position:absolute;top:1rem;right:-.6rem;width:2px;height:30px;background:repeating-linear-gradient(var(--gold-soft) 0 4px,transparent 4px 9px);opacity:.5;}
+@media (max-width:720px){[data-testid="stHorizontalBlock"]{flex-direction:column;}[data-testid="stHorizontalBlock"] [data-testid="column"]:first-child::after{display:none;}}
 .mount{position:relative;background:var(--paper);padding:14px;border:1px solid rgba(30,42,36,.18);min-height:230px;display:flex;align-items:center;justify-content:center;}
 .mount img{max-width:100%;height:auto;display:block;border:1px solid rgba(30,42,36,.15);}
 .mount-empty{font-family:var(--display);font-weight:500;text-align:center;color:var(--ink-faint);letter-spacing:.06em;font-size:.92rem;line-height:1.7;}
@@ -64,32 +64,27 @@ p,li,span,div{color:inherit;}
 .legend i.meko{background:#38b04a;}
 .legend i.lily{background:#ff9d2e;}
 .legend i.other{background:#a9a89f;}
-.plate{padding-top:.15rem;}
+.plate{padding-top:.15rem;text-align:center;}
 .plate-label{font-family:var(--display);font-weight:600;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);}
 .stamp{margin:1rem 0 .4rem;display:inline-block;padding:.55rem 1.05rem;border:3px double var(--green-deep);color:var(--green-deep);font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.18em;font-size:2.05rem;line-height:1.15;position:relative;box-shadow:inset 0 0 0 2px rgba(47,107,79,.18);}
 @keyframes stamp-clack{0%{transform:scale(2.2) rotate(-9deg);opacity:0;}60%{transform:scale(1.04) rotate(.4deg);opacity:1;}82%{transform:scale(.98) rotate(-.2deg);}100%{transform:scale(1) rotate(0);}}
-.stamp .ink{display:inline-block;animation:stamp-clack .32s cubic-bezier(.22,1,.36,1) both;}
-.stamp-denied{color:var(--red-ink);border-color:var(--red-ink);transform:rotate(-3.5deg);box-shadow:inset 0 0 0 2px rgba(179,74,46,.15);}
+.stamp .ink{display:inline-block;white-space:nowrap;animation:stamp-clack .32s cubic-bezier(.22,1,.36,1) both;}
+.stamp-denied{color:var(--red-ink);border-color:var(--red-ink);transform:rotate(-3.5deg);box-shadow:inset 0 0 0 2px rgba(179,74,46,.15);font-size:clamp(1.15rem,6vw,1.75rem);letter-spacing:.12em;}
 .stamp-denied .ink{text-transform:uppercase;}
 .stamp-doubt .ink{animation-name:stamp-tilt;}
 @keyframes stamp-tilt{0%{transform:scale(1.25) rotate(6deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:.92;}}
 .stamp-doubt{box-shadow:inset 0 0 0 2px rgba(30,42,36,.12);color:var(--paper-ink);border-color:var(--ink-soft);}
-.stamp-seam{display:inline-flex;align-items:stretch;gap:0;padding:0;border:3px double var(--green-deep);color:var(--green-deep);overflow:hidden;animation:stamp-clack .32s cubic-bezier(.22,1,.36,1) both;}
-.stamp-seam .half{padding:.55rem .5rem;}
-.stamp-seam .half.right{color:var(--green-deep);}
-.stamp-seam .seam{width:3px;background:repeating-linear-gradient(var(--gold-soft) 0 3px,transparent 3px 7px);}
-.ink-note{font-family:var(--book);color:var(--ink-soft);font-size:1rem;line-height:1.55;margin:.35rem 0 0;max-width:34ch;}
+.stamp-seam{display:inline-flex;align-items:stretch;gap:0;padding:0;border:3px double var(--green-deep);color:var(--green-deep);animation:stamp-clack .32s cubic-bezier(.22,1,.36,1) both;}
+.stamp-seam .half{padding:.5rem .85rem;}
+.stamp-seam .seam{width:8px;background:repeating-linear-gradient(90deg,var(--green-deep) 0 2px,transparent 2px 6px,var(--green-deep) 6px 8px);}
+.ink-note{font-family:var(--book);color:var(--ink-soft);font-size:1rem;line-height:1.55;margin:.35rem auto 0;max-width:34ch;}
 .ink-note .conf{font-family:var(--display);font-weight:600;font-size:.8rem;letter-spacing:.06em;color:var(--green-deep);white-space:nowrap;}
 .plate-empty p{margin-top:1.6rem;}
-details.flap{margin-top:1.25rem;border-top:1px dashed rgba(30,42,36,.3);padding-top:.7rem;}
-details.flap summary{cursor:pointer;font-family:var(--display);font-weight:600;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);list-style:none;}
-details.flap summary::-webkit-details-marker{display:none;}
-details.flap summary::after{content:"+";float:right;color:var(--gold-soft);font-weight:700;}
-details.flap[open] summary::after{content:"–";}
-details.flap .row{display:flex;align-items:center;gap:.6rem;margin-top:.6rem;font-family:var(--display);font-size:.8rem;letter-spacing:.04em;color:var(--paper-ink);}
-details.flap .row .pct{margin-left:auto;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
-details.flap .row .bar{height:6px;flex:1 1 auto;max-width:220px;background:rgba(30,42,36,.1);border:1px solid rgba(30,42,36,.25);}
-details.flap[open] .row .bar{background:linear-gradient(90deg,var(--green) var(--filled,0%),rgba(30,42,36,.1) var(--filled,0%));}
+.ledger{margin-top:1.1rem;padding-top:.6rem;border-top:1px dashed rgba(30,42,36,.3);text-align:left;}
+.ledger-label{display:block;font-family:var(--display);font-weight:600;font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);text-align:center;margin-bottom:.35rem;}
+.ledger .row{display:flex;align-items:center;gap:.6rem;margin-top:.45rem;font-family:var(--display);font-size:.72rem;letter-spacing:.04em;color:var(--paper-ink);}
+.ledger .row .pct{margin-left:auto;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+.ledger .row .bar{height:5px;flex:1 1 auto;max-width:200px;border:1px solid rgba(30,42,36,.2);background:linear-gradient(90deg,var(--green) var(--filled,0%),rgba(30,42,36,.1) var(--filled,0%));}
 .stRadio{display:flex;justify-content:stretch;margin:0 -.1rem .6rem;overflow-x:auto;}
 div[role="radiogroup"]{flex-wrap:wrap-reverse;}
 .stRadio label{flex:1 1 auto;min-width:120px;margin:0;padding:.55rem .5rem;text-align:center;font-family:var(--display);font-weight:600;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid rgba(30,42,36,.18);cursor:pointer;transition:color .12s ease,background-color .12s ease,border-color .12s ease;}
@@ -187,9 +182,9 @@ def plate(kind: str, main: str, conf: float | None = None, note: str = "", rows=
                 f'<span class="pct">{prob:.1%}</span></div>'
             )
         rows_html = (
-            '<details class="flap"><summary>The ledger&rsquo;s numbers</summary>'
+            '<div class="ledger"><span class="ledger-label">THE LEDGER</span>'
             + "".join(pieces)
-            + "</details>"
+            + "</div>"
         )
     return (
         '<div class="plate">'
@@ -295,7 +290,7 @@ UPLOAD_TAB = "Upload a photo"
 SNAPSHOT_TAB = "Take a snapshot"
 LIVE_TAB = "Live camera"
 
-source = st.radio("", (UPLOAD_TAB, SNAPSHOT_TAB, LIVE_TAB), horizontal=True)
+source = st.radio("Where does the cat come from?", (UPLOAD_TAB, SNAPSHOT_TAB, LIVE_TAB), horizontal=True, label_visibility="collapsed")
 
 if source == LIVE_TAB:
     ctx = webrtc_streamer(
@@ -329,13 +324,13 @@ if source == LIVE_TAB:
 
 photo = None
 if source == UPLOAD_TAB:
-    photo = st.file_uploader("", type=["jpg", "jpeg", "png"], key="petbook-upload")
+    photo = st.file_uploader("A photo of the cat", type=["jpg", "jpeg", "png"], key="petbook-upload", label_visibility="collapsed")
     st.markdown(
         '<div class="widget-hint">A photo of one cat, or a whole house of them &mdash; every cat gets boxed and stamped.</div>',
         unsafe_allow_html=True,
     )
 elif source == SNAPSHOT_TAB:
-    photo = st.camera_input("", key="petbook-snapshot")
+    photo = st.camera_input("A snapshot of the cat", key="petbook-snapshot", label_visibility="collapsed")
     st.markdown(
         '<div class="widget-hint">Hold steady in good light &mdash; the book reads the cat best that way.</div>',
         unsafe_allow_html=True,

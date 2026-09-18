@@ -12,7 +12,24 @@ colors:
   gold: "#5f5230"
   gold-soft: "#8a7a5c"
   red-ink: "#b04a2f"
+  meko-box: "#38b04a"
+  lily-box: "#ff9d2e"
+  visitor-box: "#a9a89f"
 typography:
+  scale:
+    micro: "0.66rem"
+    small: "0.72rem"
+    legend: "0.74rem"
+    caption: "0.78rem"
+    note: "0.8rem"
+    foot: "0.85rem"
+    plate: "0.86rem"
+    sub: "0.92rem"
+    body: "1rem"
+    title: "1.05rem"
+    denied-min: "1.15rem"
+    denied-max: "1.75rem"
+    stamp: "2.05rem"
   display:
     fontFamily: "Archivo, 'Segoe UI', Arial, sans-serif"
     fontSize: "2.35rem"
@@ -32,6 +49,7 @@ typography:
     textTransform: "uppercase"
 rounded:
   sm: "2px"
+  thumb: "6px"
 spacing:
   sm: "8px"
   md: "16px"
@@ -75,12 +93,12 @@ components:
 
 Meko or Lily is a Pet Passport, not a classifier card. The whole surface is a cream ruled ledger that Meko and Lily live in: the left page carries the photo as a corner-pinned record, the right page carries the authoritative verdict, and a single inked stamp seats who is in frame. The system's job is to make a machine judgment feel like a trusted clerk stamping an official record — official, warm, a little dry, never clinical.
 
-The density is low and unhurried. One large headline, one spread of two paper plates, one stamp. Warm paper (never white), blue-black ink (never pure black), an official registry green for acceptance, a single maroon-red ink reserved for refusals. Everything the stock Streamlit chrome would draw as a rounded widget is restitched as inked chrome: the source selector is a row of spine tabs, the photo frame is a mounted page with corner pins, the per-class numbers hide behind a ledger flap until asked. Contrast is engineered, not hoped for — every text tier clears 4.5:1 on its ground.
+The density is low and unhurried. One large headline, one spread of two paper plates, one stamp. Warm paper (never white), blue-black ink (never pure black), an official registry green for acceptance, a single maroon-red ink reserved for refusals. Everything the stock Streamlit chrome would draw as a rounded widget is restitched as inked chrome: the source selector is a row of spine tabs, the photo frame is a mounted page with corner pins, the per-class numbers sit in a quiet ruled ledger beneath the stamp. Contrast is engineered, not hoped for — every text tier clears 4.5:1 on its ground.
 
 **Key Characteristics:**
 - Paper-first: one warm ground, panel-plates in a slightly deeper tone, no shadows or gradients as decoration.
 - One stamp, one verdict — the stamp is the only large display moment, and it lands with a mechanical clack.
-- Two-page spread metaphor: evidence left, verdict right, separated by a dashed gold spine.
+- Two-page spread metaphor: evidence left, verdict right, bound by a short gold stitch tie.
 - Inked chrome: every stock widget restyled to the world's materials.
 - Honesty as decoration: privacy and uncertainty are stated plainly, never hidden.
 
@@ -102,6 +120,7 @@ A warm official palette: paper and ink rule, one registry green carries acceptan
 - **Record Ink** (#1e2a24): headings, stamps, primary type (blue-black, never pure black).
 - **Ink Soft** (rgba(30,42,36,0.80)): secondary text (≥6.9:1 on paper).
 - **Ink Faint** (rgba(30,42,36,0.68)): tertiary text — footer, blank-page placeholders (≥4.8:1 on paper).
+- **Box Green** (#38b04a), **Box Orange** (#ff9d2e), **Box Grey** (#a9a89f): the live-draw annotation colors from `vision.py`, mirrored verbatim by the legend swatches — the on-page promise of what a boxed cat means.
 
 ### Named Rules
 **The Rarity Rule.** Red ink appears only on refusals; gold-soft only as decoration; a color's meaning never crosses worlds.
@@ -127,7 +146,7 @@ A warm official palette: paper and ink rule, one registry green carries acceptan
 
 ## Layout
 
-A single centered column (Streamlit `layout="centered"`). Inside it: masthead (title + sub + a 2px binding rule), the source tab row as a spine, then a two-page spread via `st.columns([5, 6])` — left page is the photo mount + nameplate + legend, right page is the verdict plate. A thin dashed gold seam runs between the two pages full-height and disappears below 720px, where the spread stacks column-first: photo page, then verdict. The live camera branch replaces the spread with the viewing window, a live trace line, legend, and footer.
+A single centered column (Streamlit `layout="centered"`). Inside it: masthead (title + sub + a 2px binding rule), the source tab row as a spine, then a two-page spread via `st.columns([5, 6])` — left page is the photo mount + nameplate + legend, right page is the verdict plate. Between the plates, at the top of the spread, a short 2px gold binding tie is anchored to the left plate's edge and centered in the gap; below 720px the spread stacks column-first (photo page, then verdict) and the tie disappears. The live camera branch replaces the spread with the viewing window, a live trace line, legend, and footer.
 
 Spacing rhythm is generous between plates and tight within them (0.55–1.05rem padding in stamps, ~1.05rem plate padding). More space above a block than below it.
 
@@ -152,16 +171,16 @@ Sharp-cornered and ruled. Nearly all corners are square or 2px; nothing rounds p
 - **State:** hover warms text to Registry Green Deep.
 
 ### Verdict Stamp
-- **Shape:** 3px double border, 2px inset ring, uppercase display, 0.18em tracking.
-- **States:** `stamp-name` (green-deep, seats level); `stamp-denied` (red-ink, −3.5° tilt); `stamp-doubt` (ink, 92% opacity, seats with a wobble); `stamp-seam` (two green-deep halves split by a 3px gold dashed seam) for a near-tie that refuses to guess.
+- **Shape:** 3px double border, 2px inset ring, uppercase display, 0.18em tracking. Long words never wrap (nowrap ink); the denied stamp tightens tracking and clamps size so "NOT REGISTERED" always seats.
+- **States:** `stamp-name` (green-deep, seats level); `stamp-denied` (red-ink, −3.5° tilt); `stamp-doubt` (ink, 92% opacity, seats with a wobble); `stamp-seam` (two green-deep halves split by a 2px×2 vertical double-bar divider echoing the frame) for a near-tie that refuses to guess.
 - **Entrance:** one clack animation (`keyframes stamp-clack`), disabled under reduced motion.
 
 ### Photo Mount
 - **Shape:** flat paper page, 1px border, four L-shaped gold-soft corner pins, min-height 230px, centered image. Empty state reads "The page is blank. Add a photo or open the camera."
 
-### Ledger Flap
-- **Style:** a `<details>` under the stamp with a dashed top rule, uppercase 0.2em-tracking summary, "+/–" flipper in Finding Gold.
-- **Contents:** one per-class row — name, a 6px filled bar scored to the class probability, and the percent. Deliberately hidden by default; the verdict leads.
+### Ledger
+- **Style:** an always-visible ruled ledger under the verdict note, opened by a dashed top rule and a small gold "THE LEDGER" label. The verdict still leads — the ledger is quieter in size and ink.
+- **Contents:** one per-class row — name, a 5px bar filled to the class probability (always green-filled, no click needed to reveal), and the percent in tabular numerals.
 
 ### Legend
 - **Style:** three uppercase cells with 11px swatch squares: green Meko, orange Lily, grey "A visitor" — the same colors the live video draw boxes skinned in.
@@ -176,8 +195,8 @@ Sharp-cornered and ruled. Nearly all corners are square or 2px; nothing rounds p
 
 ### Do:
 - **Do** keep the page to one headline, one spread, one stamp — the record-book calm is the brand.
-- **Do** reach for the seam and the corner pins before reaching for a shadow or a rounded card.
-- **Do** hide the numbers behind the ledger flap; a probability is a footnote, not the verdict.
+- **Do** reach for the binding tie and the corner pins before reaching for a shadow or a rounded card.
+- **Do** keep the numbers smaller than the verdict in a quiet ruled ledger — a probability is a footnote, not the verdict.
 - **Do** place any text tier on a ground where it clears 4.5:1 — when a tier can't, raise the ink rather than "fixing" it with size.
 
 ### Don't:
