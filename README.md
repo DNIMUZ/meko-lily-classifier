@@ -2,8 +2,8 @@
 
 A small image-classification project that learns to distinguish two cats, Meko and Lily, from other cats. It trains a pretrained MobileNetV2 model and provides:
 
-- A **Streamlit** app (`app.py`) for photo uploads and a live camera mode, with a cat detector that boxes and labels Meko, Lily, or other cat.
-- The live camera mode has a **Flip camera** button to switch the front/rear lens and streams boxed frames to the app in real time.
+- A **Streamlit** app (`app.py`) for photo uploads and snapshot camera, with a cat detector that boxes and labels Meko, Lily, or other cat.
+- A **live webcam** mode inside the same Streamlit app (WebRTC) that streams frames and updates the boxes in real time.
 
 Read the [project report](PROJECT_REPORT.md) for the requirements, technical design, evaluation plan, risks, and delivery phases.
 
@@ -39,17 +39,11 @@ The first training run downloads MobileNetV2 weights from TensorFlow. The traine
 streamlit run app.py
 ```
 
-Open the local URL shown by Streamlit. Upload a photo first, then try the live camera mode.
+Open the local URL shown by Streamlit. Upload a photo now. When a camera is available, choose `Snapshot camera` and allow browser camera access.
 
-### Live camera mode
+### Live video (WebRTC)
 
-Choose **Camera (live)** in the app. The browser captures its own camera and streams small JPEG frames to the app (no WebRTC, works on any hosting including Streamlit Community Cloud). Each frame runs through the cat detector and the classifier on the server CPU, so expect a few frames per second.
-
-- **Flip camera** button switches between the front and rear lenses on phones.
-- Detected cats get a box labelled **Meko** or **Lily**; uncertain frames or non-Meko/Lily cats are shown as **other cat**; a frame with no cat says **No cat detected in view**.
-- Use **Pause capturing** when done so the stream stops sending frames.
-
-The camera component (`camera_live/`) is a vendored and extended copy of [streamlit-camera-input-live](https://github.com/blackary/streamlit-camera-input-live) (MIT).
+The Streamlit app has a **Live video** source built on `streamlit-webrtc`. Select it, press **Start**, approve camera access, and the feed streams directly to the app. Frames are processed on the server CPU, so expect a few frames per second. Detected cats get a box labelled **Meko** or **Lily**; uncertain frames or non-Meko/Lily cats are shown as **other cat**.
 
 ## 4. Push to GitHub
 
@@ -87,5 +81,5 @@ Never add private employer or production data to this repository. Cat photos are
 
 1. ✅ Hold out photos taken on different days for a more honest test set (see `evaluate.py`).
 2. ✅ Add a third `other` class for random cats so the model can say "neither Meko nor Lily" (`data/cats/other`).
-3. ✅ Live camera mode with cat detection and Meko/Lily/other boxes, including a front/rear flip (`Camera (live)` in `app.py`).
+3. ✅ Live webcam mode with cat detection and Meko/Lily/other boxes (`Live video` in `app.py`, WebRTC).
 4. ✅ Track precision, recall, and a confusion matrix (now reported by `evaluate.py`).
