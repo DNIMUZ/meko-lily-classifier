@@ -1,6 +1,9 @@
 # Meko or Lily Cat Classifier
 
-A small image-classification project that learns to distinguish two cats, Meko and Lily, from other cats. It trains a pretrained MobileNetV2 model and provides a Streamlit app for photo uploads. The same app includes a camera input for a later webcam test.
+A small image-classification project that learns to distinguish two cats, Meko and Lily, from other cats. It trains a pretrained MobileNetV2 model and provides:
+
+- A **Streamlit** app (`app.py`) for photo uploads and snapshot camera, with a cat detector that boxes and labels Meko, Lily, or other cat.
+- A **Gradio live-webcam** app (`gradio_app.py`) deployed on Hugging Face Spaces that streams webcam frames and updates the boxes in real time.
 
 Read the [project report](PROJECT_REPORT.md) for the requirements, technical design, evaluation plan, risks, and delivery phases.
 
@@ -38,6 +41,16 @@ streamlit run app.py
 
 Open the local URL shown by Streamlit. Upload a photo now. When a camera is available, choose `Camera` and allow browser camera access.
 
+### Live webcam app (Gradio + Hugging Face Spaces)
+
+The repo also deploys a live webcam classifier on Hugging Face Spaces:
+
+```powershell
+python gradio_app.py
+```
+
+Open the local URL, allow webcam access, and point it at a cat. Detected cats get a box labelled **Meko** or **Lily**; uncertain frames or non-Meko/Lily cats are shown as **other cat**. The webcam feed streams to the server a few frames per second, so the boxes update live. The Space can be created from this repo (entrypoint `gradio_app.py`, Python 3.12) — TensorFlow requires Python 3.12 or older, it has no wheels for 3.13/3.14.
+
 ## 4. Push to GitHub
 
 Create a new GitHub repository, preferably private while it contains personal cat photos. Check the files before committing, then run these commands from this folder:
@@ -74,5 +87,5 @@ Never add private employer or production data to this repository. Cat photos are
 
 1. ✅ Hold out photos taken on different days for a more honest test set (see `evaluate.py`).
 2. ✅ Add a third `other` class for random cats so the model can say "neither Meko nor Lily" (`data/cats/other`).
-3. Add live webcam frames after the upload workflow is reliable.
-4. Track precision, recall, and a confusion matrix (now reported by `evaluate.py`).
+3. ✅ Live webcam frames with cat detection and Meko/Lily/other boxes (`gradio_app.py`, Hugging Face Spaces).
+4. ✅ Track precision, recall, and a confusion matrix (now reported by `evaluate.py`).

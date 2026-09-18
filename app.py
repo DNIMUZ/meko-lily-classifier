@@ -6,14 +6,14 @@ import streamlit as st
 from PIL import Image, ImageOps
 from tensorflow import keras
 
-PROJECT_DIR = Path(__file__).parent
+from vision import PROJECT_DIR, CatDetector, IMAGE_SIZE, annotate
+
 MODEL_PATH = PROJECT_DIR / "models" / "meko_lily.keras"
 CLASS_NAMES_PATH = PROJECT_DIR / "models" / "class_names.json"
-IMAGE_SIZE = (224, 224)
 
 st.set_page_config(page_title="Meko or Lily?", page_icon="🐱")
 st.title("Meko or Lily?")
-st.caption("Upload a cat photo, or use the camera input when a camera is available.")
+st.caption("Upload a cat photo, or use the camera input when a camera is available. Cats are boxed as Meko, Lily, or other cat.")
 
 if not MODEL_PATH.exists() or not CLASS_NAMES_PATH.exists():
     st.warning("The model has not been trained yet. Add photos to data/cats/meko and data/cats/lily, then run: python train.py")
@@ -23,9 +23,10 @@ if not MODEL_PATH.exists() or not CLASS_NAMES_PATH.exists():
 def load_assets():
     model = keras.models.load_model(MODEL_PATH)
     class_names = json.loads(CLASS_NAMES_PATH.read_text(encoding="utf-8"))
-    return model, class_names
+    detector = CatDetector()
+    return model, class_names, detector
 
-model, class_names = load_assets()
+model, class_names, detector = load_assets()
 source = st.radio("Choose an image source", ["Upload photo", "Camera"], horizontal=True)
 photo = st.file_uploader("Choose a cat image", type=["jpg", "jpeg", "png"])
 if source == "Camera":
@@ -35,18 +36,31 @@ if source == "Camera":
 if photo is not None:
     image = Image.open(photo).convert("RGB")
     image = ImageOps.exif_transpose(image)
-    st.image(image, caption="Input photo", use_container_width=True)
-    resized = image.resize(IMAGE_SIZE)
-    pixels = np.asarray(resized, dtype=np.uint8)[None, ...]
-    probabilities = model.predict(pixels, verbose=0)[0]
-    best_index = int(np.argmax(probabilities))
-    best_name = class_names[best_index]
-    confidence = float(probabilities[best_index])
-    if best_name == "other":
-        st.subheader("Neither Meko nor Lily — looks like another cat.")
+    frame_bgr = np.asarray(image)[:, :, ::-1].copy()
+    annotated, results = annotate(frame_bgr, model, class_names, detector)
+    if results:
+        st.image(annotated[:, :, ::-1], caption="Detected cats", use_container_width=True)
+        known = [result for result in results if result["label"] != "other cat"]
+        if known:
+            summary = ", ".join(f"{result['label']} ({result['confidence']:.0%})" for result in results)
+            st.subheader(f"Found {len(results)} cat{'s' if len(results) != 1 else ''}: {summary}")
+        else:
+            st.subheader("Neither Meko nor Lily — looks like another cat.")
+        for result in results:
+            st.caption(f"Boxed as {result['label']} at {result['confidence']:.1%} confidence")
     else:
-        st.subheader(f"This looks like {best_name.title()}")
-    st.metric("Confidence", f"{confidence:.1%}")
-    st.bar_chart({name.title(): float(probabilities[index]) for index, name in enumerate(class_names)})
-    if confidence < 0.70:
-        st.info("The model is unsure. Add more varied, well-labelled photos and retrain.")
+        st.image(image, caption="Input photo", use_container_width=True)
+        resized = image.resize(IMAGE_SIZE)
+        pixels = np.asarray(resized, dtype=np.uint8)[None, ...]
+        probabilities = model.predict(pixels, verbose=0)[0]
+        best_index = int(np.argmax(probabilities))
+        best_name = class_names[best_index]
+        confidence = float(probabilities[best_index])
+        if best_name == "other":
+            st.subheader("Neither Meko nor Lily — looks like another cat.")
+        else:
+            st.subheader(f"This looks like {best_name.title()}")
+        st.metric("Confidence", f"{confidence:.1%}")
+        st.bar_chart({name.title(): float(probabilities[index]) for index, name in enumerate(class_names)})
+        if confidence < 0.70:
+            st.info("No cat was detected by the detector, so the full image was classified. The model is unsure — add more varied, well-labelled photos and retrain.")
